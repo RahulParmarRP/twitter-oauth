@@ -1,42 +1,48 @@
-{
-  "expo": {
-    "name": "twitter-oauth",
-    "slug": "twitter-oauth",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "twitteroauth",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
+import 'dotenv/config';
+
+export default {
+  expo: {
+    name: "twitter-oauth",
+    slug: "twitter-oauth",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/icon.png",
+    scheme: "twitteroauth",
+    extra: {
+      twitterClientId: process.env.TWITTER_CLIENT_ID,
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+    userInterfaceStyle: "automatic",
+    newArchEnabled: true,
+    ios: {
+      supportsTablet: true,
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/images/adaptive-icon.png",
+        backgroundColor: "#ffffff",
       },
-      "edgeToEdgeEnabled": true
+      edgeToEdgeEnabled: true,
     },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+    web: {
+      bundler: "metro",
+      output: "static",
+      favicon: "./assets/images/favicon.png",
     },
-    "plugins": [
+    plugins: [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
+          image: "./assets/images/splash-icon.png",
+          imageWidth: 200,
+          resizeMode: "contain",
+          backgroundColor: "#ffffff",
+        },
+      ],
+      "expo-secure-store",
     ],
-    "experiments": {
-      "typedRoutes": true
-    }
-  }
-}
+    experiments: {
+      typedRoutes: true,
+    },
+  },
+};
