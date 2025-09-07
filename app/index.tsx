@@ -1,9 +1,9 @@
 import * as AuthSession from "expo-auth-session";
+import Constants from "expo-constants";
 import React, { useState } from "react";
 import { Alert, Button, Text, View } from "react-native";
 
-// Twitter OAuth config
-const oAuthClientId = "Qkh4VWFaaThIbVpMZ2R1emJQbWI6MTpjaQ";
+const oAuthClientId = Constants.manifest?.extra?.twitterClientId || "";
 const redirectUri = AuthSession.makeRedirectUri({ scheme: "twitteroauth" });
 
 const discovery = {
@@ -12,10 +12,11 @@ const discovery = {
 };
 
 export default function TwitterAuth() {
-  const [token, setToken] = useState<AuthSession.TokenResponse | null>(null);
+  const [token, setToken] = useState<any>(null);
 
   const handleLogin = async () => {
     try {
+      console.log("Creating auth request...");
       const authRequest = new AuthSession.AuthRequest({
         clientId: oAuthClientId,
         redirectUri,
@@ -24,9 +25,12 @@ export default function TwitterAuth() {
         usePKCE: true,
       });
 
+      console.log("Prompting...");
       const res = await authRequest.promptAsync(discovery);
+      console.log("Auth response:", res);
 
       if (res.type === "success" && res.params.code) {
+        console.log("Exchanging code for tokens...");
         const tokenResponse = await AuthSession.exchangeCodeAsync(
           {
             clientId: oAuthClientId,
@@ -38,16 +42,16 @@ export default function TwitterAuth() {
           },
           discovery
         );
-        if ("error" in tokenResponse) {
-          const errorMessage = (tokenResponse as any).error_description || tokenResponse.error || "Token exchange failed";
-          Alert.alert("Error", errorMessage);
-        } else {
-          setToken(tokenResponse);
-          console.log("Token Response:", tokenResponse);
-        }
+
+        setToken(tokenResponse);
+        console.log("Token Response:", tokenResponse);
+      } else {
+        console.warn("Auth cancelled or failed:", res);
       }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : "Login failed";
+    } catch (error) {
+      console.error("Login error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An unknown error occurred";
       Alert.alert("Login Error", errorMessage);
     }
   };
@@ -65,7 +69,8 @@ export default function TwitterAuth() {
       setToken(refreshed);
       console.log("Refreshed Token:", refreshed);
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : "Token refresh failed";
+      const errorMessage =
+        e instanceof Error ? e.message : "Token refresh failed";
       Alert.alert("Refresh Error", errorMessage);
     }
   };
@@ -73,8 +78,12 @@ export default function TwitterAuth() {
   return (
     <View style={{ padding: 20 }}>
       <Button title="Login with Twitter" onPress={handleLogin} />
+      <Button
+        title="Refresh Token"
+        onPress={handleRefresh}
+        disabled={!token?.refreshToken}
+      />
 
-      <Button title="Refresh Token" onPress={handleRefresh} disabled={!token?.refreshToken} />
       {token && (
         <View style={{ marginTop: 20 }}>
           <Text>Access Token: {token.accessToken}</Text>
