@@ -1,9 +1,9 @@
 import * as AuthSession from "expo-auth-session";
 import React, { useState } from "react";
-import { Button, Text, View } from "react-native";
+import { Alert, Button, Text, View } from "react-native";
 
 // Twitter OAuth config
-const oAuthClientId = "YOUR_TWITTER_CLIENT_ID";
+const oAuthClientId = "Qkh4VWFaaThIbVpMZ2R1emJQbWI6MTpjaQ";
 const redirectUri = AuthSession.makeRedirectUri({ scheme: "twitteroauth" });
 
 const discovery = {
@@ -14,20 +14,19 @@ const discovery = {
 export default function TwitterAuth() {
   const [token, setToken] = useState<AuthSession.TokenResponse | null>(null);
 
-  // start auth flow
   const handleLogin = async () => {
-    const authRequest = new AuthSession.AuthRequest({
-      clientId: oAuthClientId,
-      redirectUri,
-      scopes: ["tweet.read", "users.read", "tweet.write", "offline.access"],
-      responseType: "code",
-      usePKCE: true,
-    });
+    try {
+      const authRequest = new AuthSession.AuthRequest({
+        clientId: oAuthClientId,
+        redirectUri,
+        scopes: ["tweet.read", "users.read", "tweet.write", "offline.access"],
+        responseType: "code",
+        usePKCE: true,
+      });
 
-    // Load endpoints
-    await authRequest.promptAsync(discovery).then(async (res) => {
+      const res = await authRequest.promptAsync(discovery);
+
       if (res.type === "success" && res.params.code) {
-        // Exchange code for access token
         const tokenResponse = await AuthSession.exchangeCodeAsync(
           {
             clientId: oAuthClientId,
@@ -39,30 +38,43 @@ export default function TwitterAuth() {
           },
           discovery
         );
-        setToken(tokenResponse);
-        console.log("Token Response:", tokenResponse);
+        if ("error" in tokenResponse) {
+          const errorMessage = (tokenResponse as any).error_description || tokenResponse.error || "Token exchange failed";
+          Alert.alert("Error", errorMessage);
+        } else {
+          setToken(tokenResponse);
+          console.log("Token Response:", tokenResponse);
+        }
       }
-    });
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "Login failed";
+      Alert.alert("Login Error", errorMessage);
+    }
   };
 
   const handleRefresh = async () => {
     if (!token?.refreshToken) return;
-    const refreshed = await AuthSession.refreshAsync(
-      {
-        clientId: oAuthClientId,
-        refreshToken: token.refreshToken,
-      },
-      discovery
-    );
-    setToken(refreshed);
-    console.log("Refreshed Token:", refreshed);
+    try {
+      const refreshed = await AuthSession.refreshAsync(
+        {
+          clientId: oAuthClientId,
+          refreshToken: token.refreshToken,
+        },
+        discovery
+      );
+      setToken(refreshed);
+      console.log("Refreshed Token:", refreshed);
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "Token refresh failed";
+      Alert.alert("Refresh Error", errorMessage);
+    }
   };
 
   return (
     <View style={{ padding: 20 }}>
       <Button title="Login with Twitter" onPress={handleLogin} />
-      <Button title="Refresh Token" onPress={handleRefresh} />
 
+      <Button title="Refresh Token" onPress={handleRefresh} disabled={!token?.refreshToken} />
       {token && (
         <View style={{ marginTop: 20 }}>
           <Text>Access Token: {token.accessToken}</Text>
