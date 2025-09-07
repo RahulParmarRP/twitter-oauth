@@ -1,10 +1,22 @@
 import * as AuthSession from "expo-auth-session";
 import Constants from "expo-constants";
-import React, { useState } from "react";
-import { Alert, Button, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-const oAuthClientId = Constants.manifest?.extra?.twitterClientId || "";
+// ✅ Load client ID from config
+const oAuthClientId = Constants.expoConfig?.extra?.twitterClientId || "";
+const hasClientId = Boolean(oAuthClientId);
+
+// Redirect URI → must match Twitter app settings
 const redirectUri = AuthSession.makeRedirectUri({ scheme: "twitteroauth" });
+console.log("📌 Using Redirect URI:", redirectUri);
 
 const discovery = {
   authorizationEndpoint: "https://twitter.com/i/oauth2/authorize",
@@ -13,10 +25,38 @@ const discovery = {
 
 export default function TwitterAuth() {
   const [token, setToken] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    console.log(
+      hasClientId
+        ? `✅ Client ID loaded: ${oAuthClientId}`
+        : "❌ No Client ID found in config"
+    );
+  }, []);
 
   const handleLogin = async () => {
+    console.log("🟡 Login button pressed");
+
+    if (!hasClientId) {
+      Alert.alert("Config Error", "Twitter Client ID is missing!");
+      console.error("❌ Cannot continue: Missing client ID");
+      return;
+    }
+
+    if (loading) {
+      console.log("⚠️ Login already in progress, ignoring press");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      console.log("Creating auth request...");
+      console.log("🚀 Creating auth request with:", {
+        clientId: oAuthClientId,
+        redirectUri,
+      });
+
       const authRequest = new AuthSession.AuthRequest({
         clientId: oAuthClientId,
         redirectUri,
@@ -25,12 +65,13 @@ export default function TwitterAuth() {
         usePKCE: true,
       });
 
-      console.log("Prompting...");
+      console.log("🌐 Prompting Twitter login...");
       const res = await authRequest.promptAsync(discovery);
-      console.log("Auth response:", res);
+      console.log("✅ Auth response:", res);
 
       if (res.type === "success" && res.params.code) {
-        console.log("Exchanging code for tokens...");
+        console.log("🔑 Received code:", res.params.code);
+
         const tokenResponse = await AuthSession.exchangeCodeAsync(
           {
             clientId: oAuthClientId,
@@ -44,53 +85,68 @@ export default function TwitterAuth() {
         );
 
         setToken(tokenResponse);
-        console.log("Token Response:", tokenResponse);
+        console.log("✅ Token Response:", tokenResponse);
       } else {
-        console.warn("Auth cancelled or failed:", res);
+        console.warn("⚠️ Auth cancelled or failed:", res);
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "An unknown error occurred";
       Alert.alert("Login Error", errorMessage);
-    }
-  };
-
-  const handleRefresh = async () => {
-    if (!token?.refreshToken) return;
-    try {
-      const refreshed = await AuthSession.refreshAsync(
-        {
-          clientId: oAuthClientId,
-          refreshToken: token.refreshToken,
-        },
-        discovery
-      );
-      setToken(refreshed);
-      console.log("Refreshed Token:", refreshed);
-    } catch (e) {
-      const errorMessage =
-        e instanceof Error ? e.message : "Token refresh failed";
-      Alert.alert("Refresh Error", errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={{ padding: 20 }}>
-      <Button title="Login with Twitter" onPress={handleLogin} />
-      <Button
-        title="Refresh Token"
-        onPress={handleRefresh}
-        disabled={!token?.refreshToken}
-      />
+    <View style={styles.container}>
+      <Pressable style={styles.button} onPress={handleLogin}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Login with Twitter</Text>
+        )}
+      </Pressable>
+
+      {!hasClientId && (
+        <Text style={styles.warning}>⚠️ Missing Twitter Client ID in config</Text>
+      )}
 
       {token && (
-        <View style={{ marginTop: 20 }}>
+        <View style={{ marginTop: 20, alignItems: "center" }}>
           <Text>Access Token: {token.accessToken}</Text>
-          <Text>Refresh Token: {token.refreshToken}</Text>
           <Text>Expires In: {token.expiresIn} seconds</Text>
         </View>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center", // center vertically
+    alignItems: "center", // center horizontally
+    padding: 20,
+    backgroundColor: "#fff",
+  },
+  button: {
+    backgroundColor: "#1DA1F2",
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  warning: {
+    marginTop: 10,
+    color: "red",
+    textAlign: "center",
+  },
+});
