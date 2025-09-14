@@ -1,15 +1,18 @@
-import 'dotenv/config';
+import "dotenv/config";
 
-export default {
+const config = {
   expo: {
     name: "twitter-oauth",
     slug: "twitter-oauth",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
-    scheme: "twitteroauth",
+    scheme: "twitteroauth", // Custom scheme for Android/iOS OAuth
     extra: {
-      twitterClientId: process.env.TWITTER_OAUTH2_CLIENT_ID,
+      twitterClientId: process.env.TWITTER_OAUTH2_CLIENT_ID || "",
+      eas: {
+        projectId: "5a3d01c9-be4e-41fd-bfcd-7f7591cac538",
+      },
     },
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
@@ -17,11 +20,25 @@ export default {
       supportsTablet: true,
     },
     android: {
+      package: "com.rahulparmar.twitteroauth", // 👈 meas secret:delete <id>
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
+      intentFilters: [
+        {
+          action: "VIEW",
+          data: [
+            {
+              scheme: "twitteroauth",
+              host: "redirect",
+              pathPrefix: "/",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
     },
     web: {
       bundler: "metro",
@@ -46,3 +63,5 @@ export default {
     },
   },
 };
+
+export default config;
